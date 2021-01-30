@@ -1,11 +1,8 @@
 from PyQt5 import uic
-from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QMessageBox, QWidget, QLabel,
-             QToolButton, QErrorMessage, qApp, QToolBar,
-            QStatusBar, QSystemTrayIcon, QMenu, QTimeEdit)
-from PyQt5.QtCore import (QFile, QPoint, QRect, QSize, Qt, QTime,
-            QProcess, QThread, pyqtSignal, pyqtSlot, Q_ARG , Qt, QMetaObject,
-            QObject)
-from PyQt5.QtGui import QIcon, QPixmap, QImage
+from PyQt5.QtWidgets import (QAction, QApplication, QLineEdit, QWidget, QLabel,
+              qApp, QSystemTrayIcon, QMenu)
+from PyQt5.QtCore import (QFile, Qt)
+from PyQt5.QtGui import QIcon
 from easysettings import EasySettings
 import sys, os, threading, time, schedule, json
 from urllib.request import urlopen
@@ -46,7 +43,7 @@ toaster = ToastNotifier()
 
 def notification(message):
     """Windows10 notification"""
-    toaster.show_toast("IpInfo",
+    toaster.show_toast("IPinfo",
                    message,
                    icon_path=logoIco,
                    duration=3,
@@ -132,15 +129,18 @@ c = Config()
 
 
 class Worker():
-    schedTime = int(60)
+    """Handles the threads"""
     getIP = ContinuousScheduler()
     stopSche = object
 
     def schedDo(self, schedTime):
+        """Starts the shedule and kills the current running"""
         self.getIP.every(schedTime).minutes.do(lambda: c.fetchIP())
         self.stopSche = self.getIP.run_continuously()
+        notification(f"Schedule started! Will fetch IP every {schedTime} minutes!")
 
     def scheStop(self):
+        """Kill the running thread and schedule"""
         self.stopSche.set()
 
 
@@ -161,28 +161,15 @@ tray.setVisible(True)
 menu = QMenu()
 
 
-settApp = QAction("Settings")
+settApp = QAction("IP information")
 settApp.triggered.connect(cmd_config)
 menu.addAction(settApp)
 
+fetchApp = QAction("Fetch IP")
+fetchApp.triggered.connect(lambda: c.fetchIP())
+menu.addAction(fetchApp)
+
 scheMenu = menu.addMenu("Schedule")
-
-schedFive = QAction("Every 5 minutes")
-schedFive.triggered.connect(lambda: w.schedDo(int(5)))
-scheMenu.addAction(schedFive)
-
-
-schedFift = QAction("Every 15 minutes")
-schedFift.triggered.connect(lambda: w.schedDo(int(15)))
-scheMenu.addAction(schedFift)
-
-schedThir = QAction("Every 30 minutes")
-schedThir.triggered.connect(lambda: w.schedDo(int(30)))
-scheMenu.addAction(schedThir)
-
-schedFort = QAction("Every 45 minutes")
-schedFort.triggered.connect(lambda: w.schedDo(int(45)))
-scheMenu.addAction(schedFort)
 
 schedSixt = QAction("Every 60 minutes")
 schedSixt.triggered.connect(lambda: w.schedDo(int(60)))
@@ -193,6 +180,10 @@ exitApp = QAction(QIcon(iconExit),"Exit")
 exitApp.triggered.connect(app.quit)
 exitApp.triggered.connect(lambda: w.scheStop())
 menu.addAction(exitApp)
+
+#start standard schedule with the app
+tray.setToolTip("IPinfo: No IP fetched!\nStart a manual from settings or start a schedule!")
+
 
 # Add the menu to the tray
 tray.setContextMenu(menu)
